@@ -1,1 +1,35 @@
-<h1>My future data</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV File Display with DataTables</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+</head>
+<body>
+
+<h2>CSV Data Displayed with DataTables</h2>
+<table id="csvTable" class="display">
+    <thead>
+        <tr>
+            <!-- Table headers will be generated dynamically -->
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Table rows will be populated dynamically -->
+    </tbody>
+</table>
+
+<script>
+    $(document).ready(function() {
+        $('#csvTable').DataTable({
+            ajax: 'internet_speed_log.csv',  // Path to your CSV file
+            columns: []  // Columns will be populated dynamically
+        });
+    });
+</script>
+
+</body>
+</html>
