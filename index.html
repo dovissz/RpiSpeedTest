@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSV Table Example</title>
+  <title>CSV Data Table</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     table {
@@ -17,11 +17,29 @@
       padding: 8px 12px;
       text-align: left;
     }
+    .filter-sort {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   <div>
-    <h1>CSV Data Table</h1>
+    <div class="filter-sort">
+      <label>
+        Filter by Download Speed:
+        <input type="number" id="filter-speed" placeholder="Min Mbps">
+      </label>
+      <label>
+        Sort by:
+        <select id="sort-column">
+          <option value="LogTime">Log Time</option>
+          <option value="DownloadSpeedMbps">Download Speed</option>
+          <option value="UploadSpeedMbps">Upload Speed</option>
+          <option value="PingMs">Ping</option>
+        </select>
+        <button id="toggle-sort">Toggle Order (asc)</button>
+      </label>
+    </div>
     <table id="data-table">
       <thead>
         <tr>
@@ -38,41 +56,68 @@
   </div>
 
   <script>
-    // Specify your CSV file path
     const csvFilePath = './internet_speed_log.csv';
-    const tableBody = document.getElementById('data-table').querySelector('tbody');
+    let data = [];
+    let sortOrder = 'asc';
 
-    // Use PapaParse to fetch and parse the CSV
     Papa.parse(csvFilePath, {
       download: true,
       header: true,
       skipEmptyLines: true,
       complete: function(results) {
-        const data = results.data;
+        data = results.data;
         renderTable(data);
       },
       error: function(error) {
         console.error('Error loading CSV:', error);
-        tableBody.innerHTML = '<tr><td colspan="4">Failed to load data.</td></tr>';
       }
     });
 
-    function renderTable(data) {
-      if (data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4">No data available.</td></tr>';
+    function renderTable(filteredData) {
+      const tableBody = document.getElementById('data-table').querySelector('tbody');
+      if (!filteredData.length) {
+        tableBody.innerHTML = '<tr><td colspan="4">No matching records.</td></tr>';
         return;
       }
 
-      const rows = data.map(row => `
+      tableBody.innerHTML = filteredData.map(row => `
         <tr>
-          <td>${row.LogTime}</td>
-          <td>${row.DownloadSpeedMbps}</td>
-          <td>${row.UploadSpeedMbps}</td>
-          <td>${row.PingMs}</td>
-        </tr>`).join('');
-
-      tableBody.innerHTML = rows;
+          <td>${row['LogTime'] || ''}</td>
+          <td>${row['DownloadSpeedMbps'] || ''}</td>
+          <td>${row['UploadSpeedMbps'] || ''}</td>
+          <td>${row['PingMs'] || ''}</td>
+        </tr>
+      `).join('');
     }
+
+    // Filter and Sort Events
+    document.getElementById('filter-speed').addEventListener('input', function () {
+      const filterValue = parseFloat(this.value) || 0;
+      const filteredData = data.filter(row => parseFloat(row['DownloadSpeedMbps'] || 0) >= filterValue);
+      renderTable(filteredData);
+    });
+
+    document.getElementById('sort-column').addEventListener('change', function () {
+      const sortColumn = this.value;
+      const sortedData = [...data].sort((a, b) => {
+        const aValue = a[sortColumn];
+        const bValue = b[sortColumn];
+        return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
+      });
+      renderTable(sortedData);
+    });
+
+    document.getElementById('toggle-sort').addEventListener('click', function () {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      this.textContent = `Toggle Order (${sortOrder})`;
+      const sortColumn = document.getElementById('sort-column').value;
+      const sortedData = [...data].sort((a, b) => {
+        const aValue = a[sortColumn];
+        const bValue = b[sortColumn];
+        return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
+      });
+      renderTable(sortedData);
+    });
   </script>
 </body>
 </html>
