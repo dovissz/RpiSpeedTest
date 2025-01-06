@@ -3,15 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval';">
-  <title>Angular CSV Example</title>
-  <script src="https://unpkg.com/@angular/core@16.0.0/bundles/core.umd.js"></script>
-  <script src="https://unpkg.com/@angular/common@16.0.0/bundles/common.umd.js"></script>
-  <script src="https://unpkg.com/@angular/compiler@16.0.0/bundles/compiler.umd.js"></script>
-  <script src="https://unpkg.com/@angular/platform-browser@16.0.0/bundles/platform-browser.umd.js"></script>
-  <script src="https://unpkg.com/@angular/platform-browser-dynamic@16.0.0/bundles/platform-browser-dynamic.umd.js"></script>
-  <script src="https://unpkg.com/rxjs/bundles/rxjs.umd.min.js"></script>
-  <script src="https://unpkg.com/zone.js"></script>
+  <title>CSV Table Example</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     table {
       width: 100%;
@@ -24,120 +17,62 @@
       padding: 8px 12px;
       text-align: left;
     }
-    .filter-sort {
-      margin-bottom: 20px;
-    }
   </style>
 </head>
 <body>
-  <div id="app"></div>
+  <div>
+    <h1>CSV Data Table</h1>
+    <table id="data-table">
+      <thead>
+        <tr>
+          <th>Log Time</th>
+          <th>Download Speed (Mbps)</th>
+          <th>Upload Speed (Mbps)</th>
+          <th>Ping (ms)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="4">Loading data...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-  <script type="text/javascript">
-    const { Component, NgModule } = ng.core;
-    const { BrowserModule } = ng.platformBrowser;
-    const { platformBrowserDynamic } = ng.platformBrowserDynamic;
+  <script>
+    // Specify your CSV file path
+    const csvFilePath = './internet_speed_log.csv';
+    const tableBody = document.getElementById('data-table').querySelector('tbody');
 
-    // Helper Function to Parse CSV
-    function parseCSV(csv) {
-      const rows = csv.split('\n').filter(row => row.trim());
-      const headers = rows.shift().split(',').map(header => header.trim());
-      return rows.map(row => {
-        const values = row.split(',').map(value => value.trim());
-        return headers.reduce((acc, header, index) => {
-          acc[header] = isNaN(values[index]) ? values[index] : parseFloat(values[index]);
-          return acc;
-        }, {});
-      });
+    // Use PapaParse to fetch and parse the CSV
+    Papa.parse(csvFilePath, {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        const data = results.data;
+        renderTable(data);
+      },
+      error: function(error) {
+        console.error('Error loading CSV:', error);
+        tableBody.innerHTML = '<tr><td colspan="4">Failed to load data.</td></tr>';
+      }
+    });
+
+    function renderTable(data) {
+      if (data.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4">No data available.</td></tr>';
+        return;
+      }
+
+      const rows = data.map(row => `
+        <tr>
+          <td>${row.LogTime}</td>
+          <td>${row.DownloadSpeedMbps}</td>
+          <td>${row.UploadSpeedMbps}</td>
+          <td>${row.PingMs}</td>
+        </tr>`).join('');
+
+      tableBody.innerHTML = rows;
     }
-
-    // Main App Component
-    @Component({
-      selector: 'app-root',
-      template: `
-        <div class="filter-sort">
-          <label>
-            Filter by Download Speed:
-            <input type="number" [(ngModel)]="filter.downloadSpeed" placeholder="Min Mbps">
-          </label>
-          <label>
-            Sort by:
-            <select [(ngModel)]="sortColumn">
-              <option value="LogTime">Log Time</option>
-              <option value="DownloadSpeedMbps">Download Speed</option>
-              <option value="UploadSpeedMbps">Upload Speed</option>
-              <option value="PingMs">Ping</option>
-            </select>
-            <button (click)="toggleSortOrder()">Toggle Order ({{ sortOrder }})</button>
-          </label>
-        </div>
-
-        <table *ngIf="logs.length > 0">
-          <thead>
-            <tr>
-              <th>Log Time</th>
-              <th>Download Speed (Mbps)</th>
-              <th>Upload Speed (Mbps)</th>
-              <th>Ping (ms)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let log of filteredAndSortedLogs()">
-              <td>{{ log.LogTime }}</td>
-              <td>{{ log.DownloadSpeedMbps }}</td>
-              <td>{{ log.UploadSpeedMbps }}</td>
-              <td>{{ log.PingMs }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p *ngIf="logs.length === 0">Loading data...</p>
-      `
-    })
-    class AppComponent {
-      logs = [];
-      filter = { downloadSpeed: 0 };
-      sortColumn = 'LogTime';
-      sortOrder = 'asc';
-
-      constructor() {
-        this.loadCSV();
-      }
-
-      async loadCSV() {
-        try {
-          const response = await fetch('./internet_speed_log.csv');
-          const csvText = await response.text();
-          this.logs = parseCSV(csvText);
-        } catch (error) {
-          console.error('Error loading CSV file:', error);
-        }
-      }
-
-      toggleSortOrder() {
-        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-      }
-
-      filteredAndSortedLogs() {
-        return this.logs
-          .filter(log => log.DownloadSpeedMbps >= this.filter.downloadSpeed)
-          .sort((a, b) => {
-            const valA = a[this.sortColumn];
-            const valB = b[this.sortColumn];
-            const comparison = valA < valB ? -1 : valA > valB ? 1 : 0;
-            return this.sortOrder === 'asc' ? comparison : -comparison;
-          });
-      }
-    }
-
-    // Main Module
-    @NgModule({
-      declarations: [AppComponent],
-      imports: [BrowserModule],
-      bootstrap: [AppComponent],
-    })
-    class AppModule {}
-
-    // Bootstrap the App
-    platformBrowserDynamic().bootstrapModule(AppModule);
   </script>
 </body>
 </html>
